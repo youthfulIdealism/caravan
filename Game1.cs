@@ -1,4 +1,5 @@
 ﻿using ArmadilloLib;
+using ArmadilloTree;
 using caravan.WorldManagement;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -13,7 +14,7 @@ namespace caravan
     public class Game1 : Game
     {
         public static GraphicsDeviceManager graphics;
-        SpriteBatch spriteBatch;
+        public SpriteBatch spriteBatch;
         public static Texture2D block;
         public static Game1 instance;
         public WorldBase world;
@@ -71,6 +72,7 @@ namespace caravan
             grass_img_background = Content.Load<Texture2D>("./grass_1");
 
             block = Content.Load<Texture2D>("./Block");
+            Extensions.pixel = block;
             TileTypeReferencer.Load(Content);
         }
 

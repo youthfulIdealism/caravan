@@ -17,13 +17,14 @@ namespace caravan.WorldManagement.Entities
         public float stiffness { get; set; }
         public float bend { get; protected set; }
         public bool isBackground { get; set; }
-        
+        public int variantIndex = 0;
 
 
         public PlantWrapper(AnimatedTree tree, WorldBase world)
         {
             this.world = world;
             this.tree = tree;
+            this.variantIndex = world.rand.Next(world.quadEffect.Length);
             location = tree.location;
             bendModifiers = tree.bendModifiers;
             stiffness = tree.stiffness;
@@ -56,7 +57,7 @@ namespace caravan.WorldManagement.Entities
             //tree
             world.setGraphicForQuad();
 
-            BasicEffect usedEffect = isBackground ? world.quadEffect : world.quadEffectBackground;
+            BasicEffect usedEffect = world.quadEffect[variantIndex];
 
             foreach (EffectPass pass in usedEffect.CurrentTechnique.Passes)
             {

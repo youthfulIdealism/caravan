@@ -14,6 +14,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using caravan.Worldgen;
 using ArmadilloLib.Animation;
+using ArmadilloTree.Simulation;
+using ArmadilloTree;
 
 namespace caravan.WorldManagement
 {
@@ -47,8 +49,8 @@ namespace caravan.WorldManagement
         float windOffset;
         float windWaveWidth = 100;
 
-        public BasicEffect quadEffect;
-        public BasicEffect quadEffectBackground;
+        public BasicEffect[] quadEffect;
+        //public BasicEffect quadEffectBackground;
 
         public WorldBase(int difficulty)
         {
@@ -81,7 +83,9 @@ namespace caravan.WorldManagement
 
             Rectangle screenBounds = Game1.viewDimensions;
 
-            quadEffect = new BasicEffect(Game1.graphics.GraphicsDevice);
+
+
+            /*quadEffect = new BasicEffect(Game1.graphics.GraphicsDevice);
             quadEffect.World = Matrix.CreateTranslation(-screenBounds.Width / 2, -screenBounds.Height / 2, 0);
             quadEffect.View = Matrix.CreateLookAt(new Vector3(0, 0, -1), new Vector3(0, 0, 0), new Vector3(0, -1, 0));
             quadEffect.Projection = Matrix.CreateOrthographic((float)screenBounds.Width, (float)screenBounds.Height, 1.0f, 100.0f);
@@ -95,8 +99,68 @@ namespace caravan.WorldManagement
             quadEffectBackground.Projection = Matrix.CreateOrthographic((float)screenBounds.Width, (float)screenBounds.Height, 1.0f, 100.0f);
             quadEffectBackground.VertexColorEnabled = true;
             quadEffectBackground.TextureEnabled = true;
-            quadEffectBackground.Texture = Game1.grass_img_background;
+            quadEffectBackground.Texture = Game1.grass_img_background;*/
 
+            AnimationCapturer capturer = new AnimationCapturer(1500, 16, () =>
+            {
+                Root plant = new Root();
+                buildGrass(plant, 0, 5);
+                return plant;
+            });
+            capturer.capture();
+            Texture2D[] blades = capturer.generateAnimation(Game1.instance.spriteBatch, Game1.graphics.GraphicsDevice);
+
+            quadEffect = new BasicEffect[blades.Length];
+            for (int i = 0; i < blades.Length; i++)
+            {
+                quadEffect[i] = new BasicEffect(Game1.graphics.GraphicsDevice);
+                quadEffect[i].World = Matrix.CreateTranslation(-screenBounds.Width / 2, -screenBounds.Height / 2, 0);
+                quadEffect[i].View = Matrix.CreateLookAt(new Vector3(0, 0, -1), new Vector3(0, 0, 0), new Vector3(0, -1, 0));
+                quadEffect[i].Projection = Matrix.CreateOrthographic((float)screenBounds.Width, (float)screenBounds.Height, 1.0f, 100.0f);
+                quadEffect[i].VertexColorEnabled = true;
+                quadEffect[i].TextureEnabled = true;
+                quadEffect[i].Texture = blades[i];
+            }
+
+        }
+
+        private Node buildGrass(Node current, int currentDepth, int targetDepth)
+        {
+            for (int i = 0; i < 25; i++)
+            {
+                Root root = new Root();
+                root.origin = current.origin + new Vector2((rand.nextFloat() - .5f) * 60, 0);
+
+                current.children.Add(root);
+
+                Color[] mixColors = new Color[] { Color.Salmon, Color.DarkSeaGreen, Color.Red, Color.Purple };
+
+                buildGrassblade(root, currentDepth, targetDepth + rand.Next(6), Color.Lerp(mixColors[rand.Next(mixColors.Length)], Color.Yellow, .4f + rand.nextFloat() * .2f));
+            }
+            return current;
+        }
+
+        private void buildGrassblade(Node current, int currentDepth, int targetDepth, Color mixColor)
+        {
+            Limb nextSegment = new Limb(6 + rand.Next(5), (rand.nextFloat() - .5f) * .1f, (int)Math.Max((.75f * (targetDepth - currentDepth + 1)), 1), current);
+            nextSegment.squashiness = 1f;
+            nextSegment.stiffness = .2f;
+            //nextSegment.mass = .8f;
+            nextSegment.color = Color.Lerp(mixColor, Color.Wheat, ((float)currentDepth / (float)targetDepth + 1) * .5f + rand.nextFloat() * .1f);
+            current.children.Add(nextSegment);
+
+            if (currentDepth <= targetDepth)
+            {
+                nextSegment.windForceMultiplier = .1f;
+                nextSegment.childForceMultiplier = 1;
+                nextSegment.gravityForceMultiplier = 1;
+                nextSegment.mass = 0;
+                buildGrassblade(nextSegment, currentDepth + 1, targetDepth, mixColor);
+            }
+            else
+            {
+                nextSegment.windForceMultiplier = 6;
+            }
         }
 
         public virtual void switchTo()
