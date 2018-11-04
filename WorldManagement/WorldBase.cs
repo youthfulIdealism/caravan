@@ -13,6 +13,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using caravan.Worldgen;
+using ArmadilloLib.Animation;
 
 namespace caravan.WorldManagement
 {
@@ -40,6 +41,15 @@ namespace caravan.WorldManagement
 
         public PerlinNoise noise { get; private set; }
 
+        public HashSet<Entity> queuedEntities;
+        public HashSet<Entity> entities;
+
+        float windOffset;
+        float windWaveWidth = 100;
+
+        public BasicEffect quadEffect;
+        public BasicEffect quadEffectBackground;
+
         public WorldBase(int difficulty)
         {
             chunks = new Dictionary<Point, Chunk>();
@@ -56,11 +66,37 @@ namespace caravan.WorldManagement
 
             removeChunks = new List<Chunk>();
 
-            groundColor = Color.Black;
+            //groundColor = Color.Black;
+            groundColor = Color.Lerp(Color.SaddleBrown, Color.Black, .7f);
 
             noise = new PerlinNoise("burgerBaby");
 
             playerLoc = new Vector2(40, noise.octavePerlin1D(0) * 250 * Chunk.tileDrawWidth);
+
+            entities = new HashSet<Entity>();
+            queuedEntities = new HashSet<Entity>();
+
+            windOffset = 0;
+            rand = new Random();
+
+            Rectangle screenBounds = Game1.viewDimensions;
+
+            quadEffect = new BasicEffect(Game1.graphics.GraphicsDevice);
+            quadEffect.World = Matrix.CreateTranslation(-screenBounds.Width / 2, -screenBounds.Height / 2, 0);
+            quadEffect.View = Matrix.CreateLookAt(new Vector3(0, 0, -1), new Vector3(0, 0, 0), new Vector3(0, -1, 0));
+            quadEffect.Projection = Matrix.CreateOrthographic((float)screenBounds.Width, (float)screenBounds.Height, 1.0f, 100.0f);
+            quadEffect.VertexColorEnabled = true;
+            quadEffect.TextureEnabled = true;
+            quadEffect.Texture = Game1.grass_img;
+
+            quadEffectBackground = new BasicEffect(Game1.graphics.GraphicsDevice);
+            quadEffectBackground.World = Matrix.CreateTranslation(-screenBounds.Width / 2, -screenBounds.Height / 2, 0);
+            quadEffectBackground.View = Matrix.CreateLookAt(new Vector3(0, 0, -1), new Vector3(0, 0, 0), new Vector3(0, -1, 0));
+            quadEffectBackground.Projection = Matrix.CreateOrthographic((float)screenBounds.Width, (float)screenBounds.Height, 1.0f, 100.0f);
+            quadEffectBackground.VertexColorEnabled = true;
+            quadEffectBackground.TextureEnabled = true;
+            quadEffectBackground.Texture = Game1.grass_img_background;
+
         }
 
         public virtual void switchTo()
@@ -71,6 +107,39 @@ namespace caravan.WorldManagement
         public virtual void update(GameTime time)
         {
             performChunkManagement(time);
+            windOffset += 1f;
+
+            foreach (Entity entity in entities)
+            {
+                entity.update(1);
+                if(entity is PlantWrapper)
+                {
+                    PlantWrapper tree = (PlantWrapper)entity;
+                    float effectiveWindOffset = windOffset + (tree.isBackground ? 0 : 15);
+
+                    if ((tree.location.X + effectiveWindOffset) % windWaveWidth <= 1 && (tree.location.X + effectiveWindOffset) % windWaveWidth > 0)
+                    {
+                         tree.bendModifiers.Add(new SineAndHalfTimeModifier(220, .1f, .025f));
+                    }
+                }
+            }
+
+            lock(queuedEntities)
+            {
+                foreach(Entity entity in queuedEntities)
+                {
+                    entities.Add(entity);
+                }
+                queuedEntities.Clear();
+            }
+        }
+
+        public void setGraphicForQuad()
+        {
+            //Game1.graphics.GraphicsDevice.BlendState = BlendState.Opaque;
+            Game1.graphics.GraphicsDevice.DepthStencilState = DepthStencilState.Default;
+            //Game1.graphics.GraphicsDevice.SamplerStates[0] = SamplerState.LinearWrap;
+            Game1.graphics.GraphicsDevice.RasterizerState = RasterizerState.CullClockwise;
         }
 
         public virtual void onQueueChunkForWorldGen(Point where)
@@ -344,8 +413,12 @@ namespace caravan.WorldManagement
         public virtual void draw(SpriteBatch batch, GameTime time)
         {
             totalDrawOffset = drawOffset;
-            totalDrawOffset += new Point(Game1.instance.graphics.PreferredBackBufferWidth / 2, (Game1.instance.graphics.PreferredBackBufferHeight / 2));
+            totalDrawOffset += new Point(Game1.viewDimensions.Width / 2, (Game1.viewDimensions.Height / 2));
 
+            foreach (Entity entity in entities)
+            {
+                entity.draw(batch, totalDrawOffset);
+            }
 
             foreach (Chunk chunk in chunks.Values)
             {
@@ -369,11 +442,20 @@ namespace caravan.WorldManagement
             public void runWorldGenerate(Object context)
             {
                 Chunk chunk = new Chunk(point, world);
-                chunk.generate();
+                List<Entity> generatedEntities = chunk.generate();
 
                 lock (deQueue)
                 {
                     deQueue.Add(chunk);
+                }
+
+                lock(world.queuedEntities)
+                {
+                    foreach(Entity entity in generatedEntities)
+                    {
+                        world.queuedEntities.Add(entity);
+                    }
+                    
                 }
             }
 

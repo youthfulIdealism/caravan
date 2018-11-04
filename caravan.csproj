@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\MonoGame\v3.0\MonoGame.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\MonoGame\v3.0\MonoGame.Common.props')" />
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -13,7 +13,8 @@
     <AssemblyName>caravan</AssemblyName>
     <FileAlignment>512</FileAlignment>
     <MonoGamePlatform>Windows</MonoGamePlatform>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
+    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
     <PlatformTarget>x86</PlatformTarget>
@@ -48,6 +49,9 @@
     <Compile Include="WorldGen\xxHash.cs" />
     <Compile Include="WorldManagement\Chunk.cs" />
     <Compile Include="WorldManagement\Entities\AABB.cs" />
+    <Compile Include="WorldManagement\Entities\Entity.cs" />
+    <Compile Include="WorldManagement\Entities\PlantWrapper.cs" />
+    <Compile Include="WorldManagement\SineAndHalfTimeModifier.cs" />
     <Compile Include="WorldManagement\TileTypeReferencer.cs" />
     <Compile Include="WorldManagement\Tile\Tags\DataTags.cs" />
     <Compile Include="WorldManagement\Tile\Tags\TagReferencer.cs" />
@@ -56,21 +60,31 @@
     <Compile Include="WorldManagement\WorldBase.cs" />
   </ItemGroup>
   <ItemGroup>
+    <Reference Include="ArmadilloLib">
+      <HintPath>..\ArmadilloLib\bin\Debug\ArmadilloLib.dll</HintPath>
+    </Reference>
     <Reference Include="MonoGame.Framework">
       <HintPath>$(MonoGameInstallDirectory)\MonoGame\v3.0\Assemblies\Windows\MonoGame.Framework.dll</HintPath>
+    </Reference>
+    <Reference Include="MonoGame.Framework.Content.Pipeline">
+      <HintPath>..\Lyric_Animation\packages\MonoGame.Framework.Content.Pipeline.Portable.3.6.0.1625\lib\portable-net45+win8+wpa81\MonoGame.Framework.Content.Pipeline.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="Content\animationMap_tree.png" />
     <Content Include="Content\Block.png" />
+    <Content Include="Content\grass_0.png" />
     <Content Include="Content\tile_air.png" />
     <Content Include="Content\tile_dirt.png" />
     <Content Include="Icon.ico" />
   </ItemGroup>
   <ItemGroup>
     <MonoGameContentReference Include="Content\Content.mgcb" />
+    <None Include="app.config" />
     <None Include="app.manifest" />
+    <None Include="Content\animationMap.armadillo" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="WorldManagement\Entities\Particles\" />

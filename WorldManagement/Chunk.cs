@@ -8,13 +8,15 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using ArmadilloLib.Animation;
+using caravan.WorldManagement.Entities;
 
 namespace caravan.WorldManagement
 {
     public class Chunk : IDisposable
     {
         public const int tilesPerChunk = 20;
-        public const int tileDrawWidth = 50;
+        public const int tileDrawWidth = 60;
         public bool needsReDraw { get; set; }
         public bool needsReBuildCollisions { get; set; }
         public static SpriteBatch chunkRenderBatch { get; set; }
@@ -27,6 +29,7 @@ namespace caravan.WorldManagement
         //TODO: replace this with an array of tile objects.
         private TileType[,] tiles;
         private TileType[,] backgroundTiles;
+        private List<AnimatedTree> trees;
         public Point location;
         WorldBase world;
         RenderTarget2D texture;
@@ -46,7 +49,6 @@ namespace caravan.WorldManagement
             }
 
 
-
             this.location = loc;
             this.world = world;
             tiles = new TileType[tilesPerChunk, tilesPerChunk];
@@ -58,18 +60,25 @@ namespace caravan.WorldManagement
             collisionBoxWorkBuffer = new List<Rectangle>();
             totalBox = new Rectangle(location.X * tilesPerChunk * tileDrawWidth, location.Y * tilesPerChunk * tileDrawWidth, tilesPerChunk * tileDrawWidth, tilesPerChunk * tileDrawWidth);
             tileBox = new Rectangle(location.X * tilesPerChunk, location.Y * tilesPerChunk, tilesPerChunk, tilesPerChunk);
+
+            trees = new List<AnimatedTree>();
         }
 
-        public void generate()
+        public List<Entity> generate()
         {
+            List<Entity> returnable;
             lock (tiles)
             {
-                generateProcedural();
+                returnable = generateProcedural();
             }
+            return returnable;
         }
 
-        public void generateProcedural()
+        //returns a list of entities that need to be spawned into the world
+        public List<Entity> generateProcedural()
         {
+            List<Entity> spawnedEntities = new List<Entity>();
+
             //TODO: remove cast
             WorldBase world = (WorldBase)this.world;
             generated = true;
@@ -84,29 +93,34 @@ namespace caravan.WorldManagement
                 float groundLevel = perlin.octavePerlin1D((float)(location.X * tilesPerChunk + x) / 25) * terrainMultipler;
                 for (int y = 0; y < tilesPerChunk; y++)
                 {
-                    if ((location.Y * tilesPerChunk + y) > groundLevel)
+                    float height = (location.Y * tilesPerChunk + y);
+                    if (height > groundLevel)
                     {
-                        float current = perlin.octavePerlin((float)(location.X * tilesPerChunk + x) / 25, (float)(location.Y * tilesPerChunk + y) / 25);
-
-                        if (current > caveThreshold || location.X == 0 || location.X == -1)
-                        {
-                            tiles[x, y] = TileTypeReferencer.DIRT;
-                            Console.WriteLine('d');
-                        }
-                        else
-                        {
-                            tiles[x, y] = TileTypeReferencer.AIR;
-                            Console.WriteLine('a');
-                        }
-
+                        tiles[x, y] = TileTypeReferencer.DIRT;
                     }
                     else
                     {
+                        
+                        if(height < groundLevel && height >= groundLevel - 1)
+                        {
+                            PlantWrapper wrapper = new PlantWrapper(Game1.grass.getTree(), world);
+
+                            int nx = location.X * tilesPerChunk * tileDrawWidth + x * tileDrawWidth/* - tileDrawWidth / 2 - 10*/;
+                            int ny = location.Y * tilesPerChunk * tileDrawWidth + y * tileDrawWidth/* - tileDrawWidth / 2*/;
+                            wrapper.location = new Vector2(nx, ny);
+                            spawnedEntities.Add(wrapper);
+
+                            PlantWrapper wrapper_background = new PlantWrapper(Game1.grass.getTree(), world);
+                            wrapper_background.location = new Vector2(nx, ny);
+                            wrapper_background.isBackground = true;
+                            spawnedEntities.Add(wrapper_background);
+                        }
+
                         tiles[x, y] = TileTypeReferencer.AIR;
-                        Console.WriteLine('a');
                     }
                 }
             }
+            return spawnedEntities;
         }
         
         
